@@ -1,65 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Enviar plantilla WhatsApp con link fijo</title>
+  <meta charset="UTF-8">
+  <title>Enviar plantilla "pedido"</title>
 </head>
 <body>
-  <h1>Enviar plantilla "direccion"</h1>
+  <h1>Enviar plantilla "pedido"</h1>
 
-  <label for="numero">Número de WhatsApp (con código de país, sin +):</label><br>
-  <input type="text" id="numero" placeholder="Ej. 529514138990"><br><br>
-  <button onclick="enviarPlantillaDireccion()">Enviar plantilla</button>
+  <label>Número WhatsApp (con código país, sin +):</label><br>
+  <input type="text" id="numero" value="529514138990"><br><br>
+
+  <label>Nombre del cliente:</label><br>
+  <input type="text" id="cliente" value="John"><br><br>
+
+  <label>ID Pedido:</label><br>
+  <input type="text" id="pedido" value="#12345"><br><br>
+
+  <button onclick="enviar()">Enviar plantilla</button>
 
   <script>
-    async function enviarPlantillaDireccion() {
-      const numero = document.getElementById('numero').value.trim();
-      if (!numero) {
-        alert('Por favor ingresa un número válido.');
-        return;
-      }
+    async function enviar() {
+      const numero = document.getElementById("numero").value;
+      const nombre = document.getElementById("cliente").value;
+      const pedido = document.getElementById("pedido").value;
 
-      const url = 'https://graph.facebook.com/v19.0/743724888825070/messages'; // Phone Number ID correcto
-      const token = 'EAAXIU6wZCx14BPDk2zM4jdv2N3niuILSx4Bj2rs7UgDuFGJW3GTnP4SxhHfFTTgwiWFQpplzI50ILDpVOEGMbKNE0L9OHu0umsyZBtVaDzDAw7QJNp8ESasWTfMZCUaw2HsBURZAc5fwi0eTi7AIG2yaeRAIBJfM4ZBvSGDHetnvQDnZAuV3eWZBVS4pgMFnmhCXQ6SAIhqB8lh6uZBjFM7t0CSAkwJX1vYkEBgEKpDo8aBj5oGH0UZAEIrCv7XDw7DoZD';
+      const url = "https://graph.facebook.com/v19.0/743724888825070/messages";
+      const token = "EAAXIU6wZCx14BPDTEXacG3OTZAeOhty54qEq7GSWMtoODBwAwpGF1j30jOtwPIsGv93iZCtcsGqIXLzrDNUXC03K0gVmQ0t34bPuZCzsV7puxqf16Tr6Hsgq9kDthL9yN8d9EC0SbHbpMZAiXB3gH3g2bP1OWIF1kNtOqTuEmGSVSnDlDr8wBXTdmG5eF9ZBznPNvc9r7kI3Jt63YMkL7cPXjiTa9izvjCZBbokqOEHVr8ZAAUjDZBtEsNVGyhs4ZAtgZDZD";
 
-      const data = {
-        messaging_product: 'whatsapp',
+      const body = {
+        messaging_product: "whatsapp",
         to: numero,
-        type: 'template',
+        type: "template",
         template: {
-          name: 'direccion',
-          language: { code: 'en_US' }, // Idioma correcto
-          components: [
-            {
-              type: 'button',
-              sub_type: 'url',
-              index: '0',
-              parameters: [
-                {
-                  type: 'text',
-                  text: 'http://surtidordelvalle.shop/mapas.html'
-                }
-              ]
-            }
-          ]
+          name: "pedido",
+          language: { code: "es" },
+          components: [{
+            type: "body",
+            parameters: [
+              { type: "text", text: nombre },
+              { type: "text", text: pedido }
+            ]
+          }]
         }
       };
 
       try {
         const res = await fetch(url, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json'
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
           },
-          body: JSON.stringify(data)
+          body: JSON.stringify(body)
         });
 
-        const result = await res.json();
-        console.log(result);
-        alert('Mensaje enviado. Revisa la consola para detalles.');
+        const data = await res.json();
+        console.log("Respuesta de WhatsApp:", data);
+        alert("Plantilla enviada. Revisa la consola.");
       } catch (err) {
-        console.error('Error:', err);
-        alert('Error al enviar el mensaje.');
+        console.error("Error:", err);
+        alert("Error al enviar la plantilla.");
       }
     }
   </script>
