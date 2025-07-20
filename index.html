@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Enviar plantilla WhatsApp con ubicación</title>
+</head>
+<body>
+  <h1>Enviar plantilla "lola" con ubicación</h1>
+  <button onclick="enviarMensaje()">Enviar</button>
+
+  <script>
+    async function enviarMensaje() {
+      const url = 'https://graph.facebook.com/v19.0/743724888825070/messages';
+      const token = 'EAAXIU6wZCx14BPMIBkjRW8I1ZACoXKmf8CoFyGyI4CwGuL9aoZBPKi0h7dImWK7Kxqy8YKZAwzJjcG1YJWPEKkzJW52p2r4LZA9ZBGLEAUfJxnpGkiIuxGF3N3ANJtPAbRdYq9ZCIKm3YfMVFoUCEf35dZA4vLxlrpaAG4EsBXDwVim9zzH9k3VR7ZB8LQskGH6P0ZA3rrX2RfFD1tZC8zy4JR4D6EkmTE5MZBBMNfLOHav8MI94bCoki6ZAZA220VkNyDMfkZD';
+
+      const data = {
+        messaging_product: 'whatsapp',
+        to: '529514138990',
+        type: 'template',
+        template: {
+          name: 'lola',
+          language: { code: 'es_MX' },
+          components: [
+            {
+              type: 'header',
+              parameters: [
+                {
+                  type: 'location',
+                  location: {
+                    longitude: -99.1332,
+                    latitude: 19.4326,
+                    name: 'Ciudad de México',
+                    address: 'Centro histórico, CDMX'
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      };
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        console.log(result);
+        alert('Respuesta de la API: ' + JSON.stringify(result));
+      } catch (error) {
+        console.error('Error al enviar mensaje:', error);
+        alert('Error: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
