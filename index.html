@@ -5,14 +5,25 @@
 </head>
 <body>
   <h1>Enviar plantilla "direccion"</h1>
+  
+  <label for="numero">Número de WhatsApp (con código de país, sin +):</label><br>
+  <input type="text" id="numero" placeholder="Ej. 529514138990"><br><br>
+  <button onclick="enviarPlantillaDireccion()">Enviar plantilla</button>
+
   <script>
     async function enviarPlantillaDireccion() {
+      const numero = document.getElementById('numero').value.trim();
+      if (!numero) {
+        alert('Por favor ingresa un número válido.');
+        return;
+      }
+
       const url = 'https://graph.facebook.com/v19.0/743724888825070/messages';
       const token = 'TU_TOKEN'; // Reemplaza con tu token real
 
       const data = {
         messaging_product: 'whatsapp',
-        to: '529514138990', // Reemplaza con el número de teléfono real
+        to: numero,
         type: 'template',
         template: {
           name: 'direccion',
@@ -25,7 +36,7 @@
               parameters: [
                 {
                   type: 'text',
-                  text: 'http://surtidordelvalle.shop/mapas.html' // LINK FIJO QUE SE MANDARÁ EN EL BOTÓN
+                  text: 'http://surtidordelvalle.shop/mapas.html'
                 }
               ]
             }
@@ -45,13 +56,12 @@
 
         const result = await res.json();
         console.log(result);
+        alert('Mensaje enviado. Revisa la consola para detalles.');
       } catch (err) {
         console.error('Error:', err);
+        alert('Error al enviar el mensaje.');
       }
     }
-
-    // Puedes llamar a esta función manualmente si lo integras en un botón o evento
-    enviarPlantillaDireccion();
   </script>
 </body>
 </html>
