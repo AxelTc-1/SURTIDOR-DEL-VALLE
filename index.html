@@ -1,20 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Enviar plantilla WhatsApp con enlace externo</title>
+  <title>Enviar plantilla WhatsApp con link fijo</title>
 </head>
 <body>
-  <h1>Enviar plantilla "direccion" con enlace externo</h1>
-  <button onclick="enviarMensaje()">Enviar</button>
-
+  <h1>Enviar plantilla "direccion"</h1>
   <script>
-    async function enviarMensaje() {
+    async function enviarPlantillaDireccion() {
       const url = 'https://graph.facebook.com/v19.0/743724888825070/messages';
-      const token = 'EAAXIU6wZCx14BPIbIp7VOgAvmbodcp07LUsUzsZC01dHbjj05tGHaNBpjOsJxoUZC60lwY7TpKeuX3RkwZCl6tmcwC1VvTEAS8FPjGjGZCAzCbkQBpBB3kIZAoo3ts9S7GyrgHOBGC31ud7Y4TLpaVPx7ki8CHb2lyiohbyfSFOE4HPQ7jXuzcw5DgPfiOgNYoygZDZD';
+      const token = 'TU_TOKEN'; // Reemplaza con tu token real
 
       const data = {
         messaging_product: 'whatsapp',
-        to: '529514138990',
+        to: '529514138990', // Reemplaza con el número de teléfono real
         type: 'template',
         template: {
           name: 'direccion',
@@ -27,7 +25,7 @@
               parameters: [
                 {
                   type: 'text',
-                  text: 'http://surtidordelvalle.shop/mapas.html'  // Tu enlace personalizado
+                  text: 'http://surtidordelvalle.shop/mapas.html' // LINK FIJO QUE SE MANDARÁ EN EL BOTÓN
                 }
               ]
             }
@@ -36,7 +34,7 @@
       };
 
       try {
-        const response = await fetch(url, {
+        const res = await fetch(url, {
           method: 'POST',
           headers: {
             'Authorization': 'Bearer ' + token,
@@ -45,20 +43,15 @@
           body: JSON.stringify(data)
         });
 
-        if (response.ok) {
-          const result = await response.json();
-          console.log(result);
-          alert('Mensaje enviado con enlace a mapas.html');
-        } else {
-          const errorResult = await response.json();
-          console.error('Error en la respuesta de la API:', errorResult);
-          alert('Error en la respuesta: ' + JSON.stringify(errorResult));
-        }
-      } catch (error) {
-        console.error('Error al enviar mensaje:', error);
-        alert('Error: ' + error.message);
+        const result = await res.json();
+        console.log(result);
+      } catch (err) {
+        console.error('Error:', err);
       }
     }
+
+    // Puedes llamar a esta función manualmente si lo integras en un botón o evento
+    enviarPlantillaDireccion();
   </script>
 </body>
 </html>
