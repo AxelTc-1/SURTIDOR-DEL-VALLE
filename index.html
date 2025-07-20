@@ -18,8 +18,8 @@
         return;
       }
 
-      const url = 'https://graph.facebook.com/v19.0/743724888825070/messages';
-      const token = 'EAAXIU6wZCx14BPEYvVUa5gB1JJ0AYCdDPWY7SMOSDYYMVeSXc0B3dj2Ej4ozXOtJBJPgoaQj57pZBe0jndZCKXVQ5ZCf8OACj8tzHcuNUZCTwGoBZBkQ4lZC5gxQHOC2woKcAwXqSSS9ZAtAoMHn76XA7a8nsNCa84LM39TiJ2hq5vlUkwNYtrFYQxtCnjtNuPNs5glP8FPkWdhHfOkWqKVCS40l4GNnl0Q95WbEbgEvOU7flgha2yQbWvB6Y4e76QZDZD';
+      const url = 'https://graph.facebook.com/v19.0/743724888825070/messages'; // Phone Number ID correcto
+      const token = 'EAAXIU6wZCx14BPDk2zM4jdv2N3niuILSx4Bj2rs7UgDuFGJW3GTnP4SxhHfFTTgwiWFQpplzI50ILDpVOEGMbKNE0L9OHu0umsyZBtVaDzDAw7QJNp8ESasWTfMZCUaw2HsBURZAc5fwi0eTi7AIG2yaeRAIBJfM4ZBvSGDHetnvQDnZAuV3eWZBVS4pgMFnmhCXQ6SAIhqB8lh6uZBjFM7t0CSAkwJX1vYkEBgEKpDo8aBj5oGH0UZAEIrCv7XDw7DoZD';
 
       const data = {
         messaging_product: 'whatsapp',
@@ -27,7 +27,7 @@
         type: 'template',
         template: {
           name: 'direccion',
-          language: { code: 'en_US' },
+          language: { code: 'en_US' }, // Idioma correcto
           components: [
             {
               type: 'button',
