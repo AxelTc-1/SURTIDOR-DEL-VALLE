@@ -5,7 +5,7 @@
 </head>
 <body>
   <h1>Enviar plantilla "direccion"</h1>
-  
+
   <label for="numero">Número de WhatsApp (con código de país, sin +):</label><br>
   <input type="text" id="numero" placeholder="Ej. 529514138990"><br><br>
   <button onclick="enviarPlantillaDireccion()">Enviar plantilla</button>
@@ -19,7 +19,7 @@
       }
 
       const url = 'https://graph.facebook.com/v19.0/743724888825070/messages';
-      const token = 'TU_TOKEN'; // Reemplaza con tu token real
+      const token = 'EAAXIU6wZCx14BPIbIp7VOgAvmbodcp07LUsUzsZC01dHbjj05tGHaNBpjOsJxoUZC60lwY7TpKeuX3RkwZCl6tmcwC1VvTEAS8FPjGjGZCAzCbkQBpBB3kIZAoo3ts9S7GyrgHOBGC31ud7Y4TLpaVPx7ki8CHb2lyiohbyfSFOE4HPQ7jXuzcw5DgPfiOgNYoygZDZD';
 
       const data = {
         messaging_product: 'whatsapp',
@@ -65,5 +65,3 @@
   </script>
 </body>
 </html>
-
-
