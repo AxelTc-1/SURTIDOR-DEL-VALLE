@@ -1,0 +1,33 @@
+# Environment files
+.env
+*.env
+
+# Service account keys (NEVER commit)
+*service-account*.json
+*credentials*.json
+*.key
+*.pem
+
+# Local secrets directory
+secrets/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Zips/Backups
+*.zip
+*.tar
+*.tgz
+node_modules/
+.env

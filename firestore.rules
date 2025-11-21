@@ -1,0 +1,196 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ========== Helpers ==========
+    function isSignedIn() { return request.auth != null; }
+    function userDocExists() { return isSignedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)); }
+    function userDoc() { return userDocExists() ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data : null; }
+    function userRole() { return userDocExists() ? (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role) : null; }
+    function isAdmin() { return userRole() == 'admin'; }
+    function userCajaId() { return userDocExists() ? (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.cajaId) : null; }
+    // Derivar sucursal del usuario a partir de su caja asignada (colección coleccion_cajas)
+    function userSucursal() {
+      if (!userDocExists()) return null;
+      let cId = (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.cajaId);
+      return (cId != null && exists(/databases/$(database)/documents/coleccion_cajas/$(cId)))
+        ? get(/databases/$(database)/documents/coleccion_cajas/$(cId)).data.sucursal
+        : null;
+    }
+    function isOwnTurno(turnoId) {
+      return turnoId != null
+        && exists(/databases/$(database)/documents/caja_turnos/$(turnoId))
+        && get(/databases/$(database)/documents/caja_turnos/$(turnoId)).data.userId == request.auth.uid;
+    }
+    function isOwnDoc() {
+      return (resource.data.userId == request.auth.uid) || (resource.data.createdBy == request.auth.uid);
+    }
+    function isOwnDocAfter() {
+      return (request.resource.data.userId == request.auth.uid) || (request.resource.data.createdBy == request.auth.uid);
+    }
+    function sameSucursal(doc) {
+      return (doc.sucursal == null) || (userSucursal() == null) || (doc.sucursal == userSucursal());
+    }
+
+    // ========== Usuarios ==========
+    match /usuarios/{uid} {
+      allow read: if isSignedIn();
+      // Altas/cambios sólo por admin desde la app
+      allow write: if isSignedIn() && isAdmin();
+    }
+
+    // ========== Turnos de caja ==========
+    match /caja_turnos/{turnoId} {
+      // Ver sólo los turnos propios o todo si admin
+      allow read: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      // Abrir turno: el userId debe coincidir con el usuario autenticado
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid);
+      // Cerrar/actualizar turno: sólo el dueño o admin
+      allow update: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      // No borrar turnos desde el cliente
+      allow delete: if false;
+    }
+
+    // ========== Movimientos de caja ==========
+    match /caja/{docId} {
+      // Lectura: admin o dueño del movimiento o mismo turno o misma caja asignada o misma sucursal
+      allow read: if isSignedIn() && (
+        isAdmin() || isOwnDoc() || isOwnTurno(resource.data.turnoId) ||
+        (resource.data.cajaId != null && resource.data.cajaId == userCajaId()) ||
+        sameSucursal(resource.data)
+      );
+      // Alta: debe pertenecer al usuario y al turno del usuario
+      allow create: if isSignedIn() && (
+        isAdmin() || (isOwnDocAfter() && request.resource.data.turnoId != null && isOwnTurno(request.resource.data.turnoId))
+      );
+      // Movimientos son inmutables desde el cliente
+      allow update, delete: if false;
+    }
+
+    // ========== Ventas ==========
+  match /ventas/{ventaId} {
+      // Lectura: solo admin o el creador de la venta (aislamiento por usuario)
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.createdBy == request.auth.uid
+      );
+      // Alta: creada por el usuario; si define turnoId, debe ser de ese usuario
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          request.resource.data.createdBy == request.auth.uid &&
+          (request.resource.data.turnoId == null || isOwnTurno(request.resource.data.turnoId))
+        )
+      );
+      // Cambios: sólo admin o el creador; no se permite mutar createdBy/turnoId. Además, evitar que no-admin marque CANCELADA.
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          resource.data.createdBy == request.auth.uid &&
+          request.resource.data.createdBy == resource.data.createdBy &&
+          request.resource.data.turnoId == resource.data.turnoId &&
+          // si intenta cancelar, debe ser admin
+          (request.resource.data.status != 'CANCELADA')
+        )
+      );
+      allow delete: if isSignedIn() && isAdmin();
+
+      // Subcolecciones de ventas
+      match /items/{itemId} {
+        allow read: if isSignedIn() && (
+          isAdmin() || get(/databases/$(database)/documents/ventas/$(ventaId)).data.createdBy == request.auth.uid
+        );
+        allow write: if isSignedIn() && (
+          isAdmin() || get(/databases/$(database)/documents/ventas/$(ventaId)).data.createdBy == request.auth.uid
+        );
+      }
+      match /abonos/{abonoId} {
+        allow read: if isSignedIn() && (
+          isAdmin() || get(/databases/$(database)/documents/ventas/$(ventaId)).data.createdBy == request.auth.uid ||
+          isOwnTurno(get(/databases/$(database)/documents/ventas/$(ventaId)).data.turnoId)
+        );
+        allow write: if isSignedIn() && (
+          isAdmin() || get(/databases/$(database)/documents/ventas/$(ventaId)).data.createdBy == request.auth.uid ||
+          isOwnTurno(get(/databases/$(database)/documents/ventas/$(ventaId)).data.turnoId)
+        );
+      }
+      match /produccion_hist/{histId} {
+        // Permite que producción actualice el historial; lectura a firmados
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    // ========== Cortes de caja ==========
+    match /caja_cortes/{corteId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid ||
+        (resource.data.cajaId != null && resource.data.cajaId == userCajaId()) ||
+        sameSucursal(resource.data)
+      );
+      allow create: if isSignedIn() && (isAdmin() || request.resource.data.userId == request.auth.uid);
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if false;
+    }
+    // Colección espejo (legado) para compatibilidad
+    match /corte_caja/{corteId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid ||
+        (resource.data.cajaId != null && resource.data.cajaId == userCajaId()) ||
+        sameSucursal(resource.data)
+      );
+      allow create: if isSignedIn() && (isAdmin() || request.resource.data.userId == request.auth.uid);
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if false;
+    }
+
+    // ========== Catálogo de cajas ==========
+    match /coleccion_cajas/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isAdmin();
+    }
+
+    // ========== Catálogos y módulos generales (lectura/escritura autenticada) ==========
+    // Nota: se mantienen abiertos para no romper flujos actuales de la app. Endurecer más tarde si se requiere.
+    match /productos/{id} { allow read, write: if isSignedIn(); }
+    match /insumos/{id} { allow read, write: if isSignedIn(); }
+    match /categorias/{id} { allow read, write: if isSignedIn(); }
+    match /gasto_categorias/{id} { allow read, write: if isSignedIn(); }
+    match /clientes/{id} { allow read, write: if isSignedIn(); }
+    match /cotizaciones/{id} { allow read, write: if isSignedIn(); }
+    match /facturas/{id} { allow read, write: if isSignedIn(); }
+    match /sucursales/{id} { allow read, write: if isSignedIn(); }
+    match /pagos/{id} { allow read, write: if isSignedIn(); }
+    match /proveedores/{id} { allow read, write: if isSignedIn(); }
+    match /cxp_proveedores/{id} { allow read, write: if isSignedIn(); }
+    match /pedidos_proveedor/{id} { allow read, write: if isSignedIn(); }
+    match /maquinas/{id} { allow read, write: if isSignedIn(); }
+    match /compras/{id} { allow read, write: if isSignedIn(); }
+
+    // ========== Aprobaciones administrativas ==========
+    match /admin_approvals/{id} {
+      allow read: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && isAdmin();
+    }
+
+    // ========== Counters (folios/seq) ==========
+    // Locks de idempotencia de ventas: counters/ventas_idem/locks/{id}
+    match /counters/ventas_idem/locks/{lockId} {
+      allow read, write: if isSignedIn();
+    }
+    // Otros counters usados por la app (folio secuencial y códigos únicos)
+    match /counters/{counterId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        counterId.matches('^ventasFolio$') ||
+        counterId.matches('^cajaId8$') ||
+        counterId.matches('^cotizaciones$') ||
+        counterId.matches('^facturas$') ||
+        counterId.matches('^categoriaNumero$') ||
+        counterId.matches('^gastoCategoriaNumero$') ||
+        counterId.matches('^cajaFolio$') ||
+        counterId.matches('^gastosFolio$') ||
+        counterId.matches('^ingresosFolio$') ||
+        counterId.matches('^retirosFolio$') ||
+        counterId.matches('^turnoSeq-.*')
+      );
+    }
+  }
+}

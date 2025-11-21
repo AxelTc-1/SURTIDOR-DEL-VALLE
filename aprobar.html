@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Aprobación de diseño</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif; background:#f1f5f9; color:#1e293b; display:flex; min-height:100vh; align-items:center; justify-content:center; padding:30px; }
+    .card { background:#fff; max-width:520px; width:100%; border:1px solid #e2e8f0; border-radius:18px; padding:28px 30px 34px; box-shadow:0 10px 28px -6px rgba(0,0,0,.08),0 2px 6px -1px rgba(0,0,0,.05); position:relative; }
+    h1 { margin:0 0 6px; font-size:1.35rem; letter-spacing:.5px; font-weight:600; }
+    .small { font-size:0.7rem; color:#64748b; margin:0 0 18px; }
+    .status { display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; letter-spacing:.5px; padding:4px 10px 4px 6px; border-radius:30px; background:#f1f5f9; color:#334155; border:1px solid #e2e8f0; }
+    .status-dot { width:10px; height:10px; border-radius:50%; background:#fbbf24; box-shadow:0 0 0 1px rgba(0,0,0,.08); }
+    .status.aprobado { background:#dcfce7; border-color:#bbf7d0; color:#166534; }
+    .status.aprobado .status-dot { background:#16a34a; }
+    .status.rechazado { background:#fee2e2; border-color:#fecaca; color:#991b1b; }
+    .status.rechazado .status-dot { background:#dc2626; }
+    .token-box { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:0.65rem; background:#0f172a; color:#f8fafc; padding:10px 12px; border-radius:10px; word-break:break-all; user-select:all; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:22px; }
+    button { cursor:pointer; border:none; font-size:0.75rem; letter-spacing:.5px; font-weight:600; padding:10px 18px; border-radius:10px; display:inline-flex; align-items:center; gap:6px; transition:.22s background, .22s box-shadow, .22s transform; }
+    button.primary { background:#2563eb; color:#fff; box-shadow:0 2px 4px -1px rgba(0,0,0,.25); }
+    button.primary:hover { background:#1d4ed8; }
+    button.danger { background:#dc2626; color:#fff; }
+    button.danger:hover { background:#b91c1c; }
+    button.secondary { background:#e2e8f0; color:#334155; }
+    button.secondary:hover { background:#cbd5e1; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    textarea { width:100%; min-height:90px; resize:vertical; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; font-size:0.78rem; font-family:inherit; background:#f8fafc; color:#0f172a; }
+    textarea:focus { outline:2px solid #3b82f6; border-color:#3b82f6; background:#fff; }
+    .msg { margin-top:18px; font-size:0.7rem; line-height:1.35; background:#f1f5f9; padding:10px 12px; border-radius:10px; border:1px solid #e2e8f0; color:#475569; }
+    .hidden { display:none !important; }
+    footer { margin-top:30px; text-align:center; font-size:0.6rem; color:#94a3b8; }
+    @media (max-width:640px){ body{ padding:18px; } .card{ padding:24px 22px 30px; } }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h1>Aprobación de diseño</h1>
+    <p class="small" id="desc">Validando token…</p>
+    <div id="statusWrap" class="hidden"><span id="statusBadge" class="status"><span class="status-dot"></span><span id="statusText">PENDIENTE</span></span></div>
+    <div style="margin:18px 0 12px;" id="tokenWrap" class="hidden">
+      <div class="token-box" id="tokenBox"></div>
+    </div>
+    <div id="pedidoInfo" class="hidden" style="font-size:0.72rem; color:#334155; background:#f8fafc; border:1px solid #e2e8f0; padding:10px 12px; border-radius:10px; line-height:1.5; margin-bottom:18px;"></div>
+    <label id="comentarioWrap" class="hidden" style="display:flex;flex-direction:column;gap:6px;font-size:0.65rem;font-weight:600;color:#475569;">
+      Comentario (opcional)
+      <textarea id="comentarioInput" placeholder="Comentarios, ajustes solicitados o razones de rechazo"></textarea>
+    </label>
+    <div class="actions" id="actions" class="hidden">
+      <button id="aprobarBtn" class="primary" disabled>Aprobar</button>
+      <button id="rechazarBtn" class="danger" disabled>Rechazar</button>
+      <button id="copiarBtn" class="secondary" disabled>Copiar enlace</button>
+    </div>
+    <div id="msg" class="msg hidden"></div>
+    <footer>© <span id="year"></span> Aprobación de diseño</footer>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <!-- Optional: if using auth guarded rules for mark, include auth (anonymous) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <!-- Config: si existe config.js se cargará antes de esta página en hosting; fallback placeholder -->
+  <script>
+    (function ensureConfig(){
+      if(!window.__FIREBASE_CONFIG__){
+        window.__FIREBASE_CONFIG__ = { apiKey:"__API_KEY__", authDomain:"tcservidor-b8874.firebaseapp.com", projectId:"tcservidor-b8874" };
+      }
+    })();
+  </script>
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const token = (qs.get('token')||'').trim();
+    const state = { loaded:false, doc:null };
+    const el = id=> document.getElementById(id);
+    const statusBadge = el('statusBadge');
+    const statusText = el('statusText');
+    const desc = el('desc');
+    const tokenBox = el('tokenBox');
+    const tokenWrap = el('tokenWrap');
+    const pedidoInfo = el('pedidoInfo');
+    const comentarioWrap = el('comentarioWrap');
+    const comentarioInput = el('comentarioInput');
+    const aprobarBtn = el('aprobarBtn');
+    const rechazarBtn = el('rechazarBtn');
+    const copiarBtn = el('copiarBtn');
+    const actions = el('actions');
+    const msgBox = el('msg');
+    const statusWrap = el('statusWrap');
+    el('year').textContent = new Date().getFullYear();
+
+    function showMsg(text, type='info'){ msgBox.textContent = text; msgBox.classList.remove('hidden'); msgBox.style.background = type==='error'? '#fee2e2' : (type==='ok'? '#dcfce7':'#f1f5f9'); msgBox.style.borderColor = type==='error'? '#fecaca' : (type==='ok'? '#bbf7d0':'#e2e8f0'); msgBox.style.color = type==='error'? '#991b1b' : (type==='ok'? '#166534':'#475569'); }
+
+    if(!token){ desc.textContent='Falta el token.'; showMsg('URL inválida – falta parámetro ?token=','error'); } else { desc.textContent='Cargando información del diseño…'; }
+
+    async function init(){
+      if(!token) return;
+      firebase.initializeApp(window.__FIREBASE_CONFIG__);
+      const db = firebase.firestore();
+      // (Opcional) login anónimo para reglas que exijan auth
+      try { await firebase.auth().signInAnonymously(); } catch(_e){}
+
+      const ref = db.collection('approval_tokens').doc(token);
+      try {
+        const snap = await ref.get();
+        if(!snap.exists){ desc.textContent='Token no encontrado'; showMsg('El token no existe o ya fue eliminado.','error'); return; }
+        const d = snap.data(); state.doc = d; state.loaded = true;
+        render(d);
+        // Listener live (por si otro lo aprueba mientras está abierto)
+        ref.onSnapshot(s=>{ if(s.exists){ state.doc = s.data(); render(state.doc); } });
+      } catch(e){ console.error(e); desc.textContent='Error cargando token'; showMsg('Error consultando Firestore: '+(e.message||e),'error'); }
+    }
+
+    function render(d){
+      tokenWrap.classList.remove('hidden'); tokenBox.textContent = token;
+      statusWrap.classList.remove('hidden');
+      const st = d.status || 'PENDIENTE';
+      statusBadge.classList.remove('aprobado','rechazado');
+      if(st==='APROBADO') statusBadge.classList.add('aprobado'); else if(st==='RECHAZADO') statusBadge.classList.add('rechazado');
+      statusText.textContent = st;
+      desc.textContent = st==='PENDIENTE'? 'Revisa el diseño y elige una opción.' : (st==='APROBADO'? 'Este diseño ya fue aprobado.' : 'Este diseño fue rechazado.');
+      const piezas = [];
+      if(d.ventaId) piezas.push('<strong>Pedido / Venta:</strong> '+d.ventaId);
+      if(d.version) piezas.push('<strong>Versión:</strong> '+d.version);
+      if(d.clienteNombre) piezas.push('<strong>Cliente:</strong> '+d.clienteNombre);
+      if(d.comentario) piezas.push('<strong>Comentario previo:</strong> '+escapeHtml(d.comentario));
+      pedidoInfo.innerHTML = piezas.length? piezas.join('<br>') : 'Sin metadatos adicionales.';
+      pedidoInfo.classList.remove('hidden');
+      const pending = st==='PENDIENTE';
+      comentarioWrap.classList.toggle('hidden', !pending);
+      aprobarBtn.disabled = !pending; rechazarBtn.disabled = !pending; copiarBtn.disabled = false; actions.classList.remove('hidden');
+    }
+
+    function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+    async function updateStatus(action){
+      aprobarBtn.disabled = rechazarBtn.disabled = true;
+      showMsg('Enviando…','info');
+      try {
+        // Usar transacción directa (no depende de firebase.js del app principal)
+        const db = firebase.firestore();
+        const ref = db.collection('approval_tokens').doc(token);
+        await db.runTransaction(async tx=>{
+          const snap = await tx.get(ref);
+            if(!snap.exists) throw new Error('Token no existe');
+            const d = snap.data();
+            if(d.status !== 'PENDIENTE') return; // idempotente
+            const patch = { status: action, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), resolvedAt: firebase.firestore.FieldValue.serverTimestamp(), resolvedAtIso: new Date().toISOString() };
+            const comentario = comentarioInput.value.trim();
+            if(comentario) patch.comentario = comentario;
+            tx.update(ref, patch);
+        });
+        // Registrar evento
+        try { await firebase.firestore().collection('approval_events').add({ token, action, ts: firebase.firestore.FieldValue.serverTimestamp(), fecha:new Date().toISOString().slice(0,10) }); } catch(_e){}
+        showMsg(action==='APROBADO'? '¡Gracias! El diseño quedó aprobado.' : 'Se registró el rechazo.','ok');
+      } catch(e){ console.error(e); showMsg('Error: '+(e.message||e),'error'); }
+      finally { /* re-enable only copy */ copiarBtn.disabled = false; }
+    }
+
+    aprobarBtn.addEventListener('click', ()=> updateStatus('APROBADO'));
+    rechazarBtn.addEventListener('click', ()=> updateStatus('RECHAZADO'));
+    copiarBtn.addEventListener('click', ()=>{ try { navigator.clipboard.writeText(location.href); showMsg('Enlace copiado.','ok'); } catch(_e){ showMsg('Copia manualmente el enlace.','info'); } });
+
+    init();
+  </script>
+</body>
+</html>

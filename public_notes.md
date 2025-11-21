@@ -1,0 +1,6 @@
+- Servidor local (`server.js`) entrega `script.js` ya con marcador `// BUNDLE_COMPLETE`.
+- PowerShell confirma 1,369,726 bytes y hash `9bd93d34b60fbdb8d3cfbe5ae899683fed258968ca16845c11194ea80a337b75` (sumando el comentario final).
+- Nav agos (Chrome, Edge) siguen recibiendo 1,367,625 bytes con hash `e1c8ed1faf15c83515c70fe8f4683326976ca43f0c1c845bd26c05d404f989dd`; se trunc a +-2 KB antes de `BUNDLE_COMPLETE`.
+- Se sospecha caching/proxy externo; cookie `bundle_bust=<ts>` enviada antes de `<script src="/api/bundle.js?v=<ts>">`.
+- Siguiente paso: revisar tráfico con `curl --raw -H "Accept-Encoding: br" http://localhost:3000/api/bundle.js?v=<ts> -o out` o con `Invoke-WebRequest` y comparar tamaños.
+- Si otro navegador limpio o máquina distinta recibe el bundle completo, el problema es local (antivirus, interceptores, etc.).
